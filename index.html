@@ -11,19 +11,26 @@
       <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@latest/dist/leaflet.draw.css" />
     <script src="https://unpkg.com/leaflet-draw@latest/dist/leaflet.draw.js"></script>
   </head>
-  <body>
-    hej
-    <div id='map' style='width: 100%; height: 50vh;'></div>
-
-    <input type="range" min="0" max="15" step="1" value="7" />
-    <input type="number" min="0" max="15" step="1" value="7" />
+  <body style="margin:0">
+    <main style="min-height:100vh;display:flex;flex-direction:column;">
+      <div id="map" style='width:100%;flex:1'></div>
+      <div id="info" style="padding:2rem">
+        <form>
+          <label for="resolution">Resolution</label>
+          <input type="range" min="0" max="15" step="1" value="7" />
+          <input id="resolution" type="number" min="0" max="15" step="1" value="7" />
+        </form>
+        <textarea id="result" rows="20" style="width:100%;display:block"></textarea>
+      </div>
+    </main>
 
     <script>
       let resolution = 7
       let rings = []
 
-      const number = document.querySelector("input[type=number]")
-      const range = document.querySelector("input[type=range]")
+      const result = document.querySelector("#info textarea")
+      const number = document.querySelector("#info input[type=number]")
+      const range = document.querySelector("#info input[type=range]")
       number.addEventListener('input', updateResolution)
       range.addEventListener('change', updateResolution)
       range.addEventListener('input', ({ target }) => {
@@ -37,38 +44,44 @@
         update()
       }
 
-      function addRing(layer) {
-        rings.push(layer)
+      function addRing(ring) {
+        rings.push(ring)
         update()
       }
 
       function update() {
         drawnItems.clearLayers();
-        rings.forEach(layer => {
-          drawnItems.addLayer(layer)
-          const cells = h3.polygonToCells(layer.toGeoJSON().geometry.coordinates, resolution)
-          const coordinates = h3.cellsToMultiPolygon(cells)
-          drawnItems.addLayer(L.geoJSON({ type: "MultiPolygon", coordinates }))
-        })
+
+        const cells = h3.polygonToCells(rings, resolution)
+        const coordinates = h3.cellsToMultiPolygon(cells)
+        drawnItems.addLayer(L.geoJSON({ type: "MultiPolygon", coordinates }))
+        drawnItems.addLayer(L.geoJSON({ type: "Polygon", coordinates: rings }))
+
+        result.value = `Cells:\n${cells}\n\n`
+        result.value += `BigInts:\n${cells.map(cell => BigInt('0x' + cell))}\n\n`
+        result.value += `Polygon:\n${rings.map(JSON.stringify).join("\n")}\n\n`
       }
 
       // --- leaflet ----
 
-      const map = L.map('map', { drawControl: true }).setView([51.505, -0.09], 13)
+      const map = L.map('map').setView([51.505, -0.09], 13)
+      const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' })
+      const drawControl = new L.Control.Draw({ draw: { circle: false, circlemarker: false, marker: false, polyline: false }})
+      const drawnItems = L.featureGroup()
+      tileLayer.addTo(map)
+      map.addControl(drawControl)
+      drawnItems.addTo(map)
 
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' })
-       .addTo(map);
-
-      const drawnItems = L.featureGroup().addTo(map)
-
-      map.on(L.Draw.Event.CREATED, function ({ layer }) {
-        addRing(layer)
-      });
+      map.on(L.Draw.Event.CREATED, ({ layer }) => { addRing(ringFromLayer(layer)) });
 
       // --- utils ---
 
       function clamp(min, value, max) {
         return Math.max(min, Math.min(max, value))
+      }
+
+      function ringFromLayer(layer) {
+        return layer.toGeoJSON().geometry.coordinates[0]
       }
     </script>
   </body>
