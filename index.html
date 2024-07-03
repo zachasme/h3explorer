@@ -17,16 +17,18 @@
       <div id="info" style="padding:2rem">
         <form>
           <label for="resolution">Resolution</label>
-          <input type="range" min="0" max="15" step="1" value="7" />
-          <input id="resolution" type="number" min="0" max="15" step="1" value="7" />
+          <input type="range" min="0" max="15" step="1" value="11" />
+          <input id="resolution" type="number" min="0" max="15" step="1" value="11" />
         </form>
         <textarea id="result" rows="20" style="width:100%;display:block"></textarea>
       </div>
     </main>
 
     <script>
-      let resolution = 7
-      let rings = []
+      let resolution = 11
+      let rings = [
+        [[12.595493,55.66824],[12.593991,55.667901],[12.595117,55.667474],[12.595493,55.66824]]
+      ]
 
       const result = document.querySelector("#info textarea")
       const number = document.querySelector("#info input[type=number]")
@@ -64,7 +66,7 @@
 
       // --- leaflet ----
 
-      const map = L.map('map').setView([51.505, -0.09], 13)
+      const map = L.map('map').setView([55.668249,12.595482], 17)
       const tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' })
       const drawControl = new L.Control.Draw({ draw: { circle: false, circlemarker: false, marker: false, polyline: false }})
       const drawnItems = L.featureGroup()
@@ -73,6 +75,9 @@
       drawnItems.addTo(map)
 
       map.on(L.Draw.Event.CREATED, ({ layer }) => { addRing(ringFromLayer(layer)) });
+
+      update()
+
 
       // --- utils ---
 
